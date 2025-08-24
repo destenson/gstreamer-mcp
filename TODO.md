@@ -1,21 +1,25 @@
 # TODO List - GStreamer MCP Server
 
 ## Project Status
-Core MCP server with element discovery and pipeline management tools complete. All 10 tools from PRP-01 and PRP-02 are functional with enhanced descriptions (PRP-08 completed). Ready to implement element suggestions (PRP-03) and programming assistants (PRP-04/05).
+Core MCP server with element discovery and pipeline management tools complete. All 10 tools from PRP-01 and PRP-02 are functional with enhanced descriptions (PRP-08 completed). CLI parsing implemented (PRP-07) but tool filtering not working. Ready to implement element suggestions (PRP-03) and seek/playback control (PRP-06).
 
 ## High Priority 🔴
 
-### 1. Command-Line Interface and Modes (PRP-00)
-- [ ] **Implement CLI argument parsing**
-  - Add clap dependency for command-line parsing
-  - Create cli.rs module with mode selection
-  - Support --mode flag (live, dev, discovery, all)
-  - Add --tools and --exclude-tools options
+### 1. Command-Line Interface and Modes (PRP-00/07)
+- [x] **Implement CLI argument parsing** (COMPLETED)
+  - ✅ Added clap dependency for command-line parsing
+  - ✅ Created cli.rs module with mode selection
+  - ✅ Support --mode flag (live, dev, discovery, all)
+  - ✅ Added --tools and --exclude-tools options
   
-- [ ] **Create Tool Registry System**
-  - Implement tool metadata and categorization
-  - Add mode-based tool filtering
-  - Create runtime enable/disable mechanism
+- [x] **Create Tool Registry System** (COMPLETED)
+  - ✅ Implemented tool metadata and categorization
+  - ✅ Added mode-based tool filtering logic
+  - ⚠️ **BUG**: Tool filtering not actually working - enabled_tools checked but all tools exposed
+  
+- [ ] **Fix Tool Filtering Implementation**
+  - [ ] Actually filter tools in handler based on enabled_tools
+  - [ ] Test mode-based filtering works correctly
 
 ### 2. Core MCP Server Implementation
 - [x] **Initialize Rust project structure** (PRP-01) (COMPLETED)
@@ -43,8 +47,11 @@ Core MCP server with element discovery and pipeline management tools complete. A
 - [x] Implement `ListGstPlugins` tool (COMPLETED)
 - [x] Implement `SearchGstElements` with keyword matching (COMPLETED)
 - [x] **Enhanced tool descriptions** (PRP-08 COMPLETED - All descriptions improved)
-- [ ] Add element information caching for performance
-- [ ] **Implement signal discovery** (src/discovery.rs:188 - Currently returns empty Vec)
+- [ ] **Add element information caching for performance**
+  - Config support exists but not implemented
+  - See DiscoveryCache in discovery.rs
+- [ ] **Implement signal discovery** (src/discovery.rs:188)
+  - Currently returns empty Vec with TODO comment
 
 ### 4. Pipeline Management (PRP-02)
 - [x] Implement `LaunchPipeline` tool with gst::parse_launch (COMPLETED)
@@ -92,16 +99,21 @@ Core MCP server with element discovery and pipeline management tools complete. A
 ## Technical Debt & Improvements 📋
 
 ### Testing
-- [ ] Add unit tests for element discovery
+- [x] Basic unit tests (5 tests) for CLI and tool registry
+- [ ] Add comprehensive unit tests for element discovery
 - [ ] Create integration tests for pipeline management
-- [ ] Add tests for suggestion algorithms
-- [ ] Test code generation output compilation
+- [ ] Add tests for bus message handling
+- [ ] Test tool filtering with different modes
+- [ ] Add tests for suggestion algorithms (when implemented)
+- [ ] Test code generation output compilation (when implemented)
 
 ### Documentation
-- [ ] Create comprehensive README.md
-- [ ] Add API documentation for all tools
+- [x] Create comprehensive README.md (COMPLETED)
+- [x] Add API documentation for all tools (COMPLETED)
+- [x] Enhanced tool descriptions (PRP-08 COMPLETED)
 - [ ] Write user guide for MCP client integration
-- [ ] Document GStreamer setup requirements
+- [ ] Document GStreamer setup requirements for different platforms
+- [ ] Add troubleshooting guide for common issues
 
 ### Performance
 - [ ] Optimize element registry scanning
@@ -114,6 +126,19 @@ Core MCP server with element discovery and pipeline management tools complete. A
 - [ ] Add resource usage limits
 - [ ] Consider file system access restrictions
 - [ ] Add element whitelist/blacklist support
+
+## Code Quality Issues 🐛
+
+### Clippy Warnings (46 issues)
+- [ ] Fix uninlined format args throughout codebase
+- [ ] Replace while-let-loop patterns
+- [ ] Add Default implementations where needed
+- [ ] Remove unnecessary let bindings
+- [ ] Fix useless format! calls
+
+### Minor Issues
+- [ ] Unused parameters in some functions (prefixed with _)
+- [ ] REPL mode skeleton exists but not fully integrated
 
 ## Future Enhancements 💡
 
@@ -145,6 +170,10 @@ Core MCP server with element discovery and pipeline management tools complete. A
 - Different operational modes (live, dev, discovery) provide targeted tool sets for specific use cases
 
 ---
-*Last Updated: 2025-01-23 - Completed PRP-08 Tool Descriptions Enhancement*
-*Previous Update: 2025-08-23 - Added PRP-06 Seek and Playback Control tasks*
+*Last Updated: 2025-01-23 - Updated after TODO scan and PRP-08 completion*
+*Previous Update: 2025-01-23 - Completed PRP-08 Tool Descriptions Enhancement*
 *Priority Levels: 🔴 High (Critical for MVP) | 🟡 Medium (Core features) | 🟢 Low (Nice to have)*
+
+## Files with TODOs:
+- `src/discovery.rs:188` - Signal discovery not implemented
+- `src/tool_registry.rs:159` - Note about future tools to be added
