@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
 
+use crate::discovery::ensure_gstreamer_initialized;
 use crate::error::{GStreamerMcpError, Result as McpResult};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -59,6 +60,9 @@ impl PipelineManager {
         description: &str,
         custom_id: Option<String>,
     ) -> McpResult<String> {
+        // Ensure GStreamer is initialized
+        ensure_gstreamer_initialized()?;
+        
         // Check pipeline limit
         {
             let pipelines = self.pipelines.read();
@@ -256,6 +260,9 @@ pub struct PipelineStatus {
 }
 
 pub fn validate_pipeline_description(description: &str) -> McpResult<Vec<String>> {
+    // Ensure GStreamer is initialized
+    ensure_gstreamer_initialized()?;
+    
     // Try to parse the pipeline
     match gst::parse::launch(description) {
         Ok(element) => {
