@@ -19,73 +19,73 @@ use tokio::sync::RwLock;
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct ListElementsParams {
-    #[schemars(description = "Optional filter to match element names")]
+    #[schemars(description = "Optional filter to match element names (e.g., 'video' to find videotestsrc, videoconvert, etc.)")]
     pub filter: Option<String>,
-    #[schemars(description = "Optional category to filter elements by classification")]
+    #[schemars(description = "Optional category to filter elements by classification (e.g., 'Source', 'Sink', 'Filter', 'Codec')")]
     pub category: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct InspectElementParams {
-    #[schemars(description = "Name of the GStreamer element to inspect")]
+    #[schemars(description = "Name of the GStreamer element to inspect (e.g., 'videotestsrc', 'x264enc', 'filesink')")]
     pub element_name: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct ListPluginsParams {
-    #[schemars(description = "Optional filter to match plugin names")]
+    #[schemars(description = "Optional filter to match plugin names (e.g., 'core' for coreelements, 'good' for good plugins)")]
     pub filter: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct SearchElementsParams {
-    #[schemars(description = "Search query to match against element names and descriptions")]
+    #[schemars(description = "Search query to match against element names, descriptions, and classifications (e.g., 'encoder', 'mp4', 'audio')")]
     pub query: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct LaunchPipelineParams {
-    #[schemars(description = "Pipeline description in gst-launch syntax")]
+    #[schemars(description = "Pipeline description in gst-launch syntax (e.g., 'videotestsrc ! autovideosink')")]
     pub pipeline_description: String,
-    #[schemars(description = "Whether to start the pipeline immediately")]
+    #[schemars(description = "Whether to start the pipeline immediately (default: true). Set to false to create in PAUSED state")]
     pub auto_play: Option<bool>,
-    #[schemars(description = "Optional custom pipeline ID")]
+    #[schemars(description = "Optional custom pipeline ID. If not provided, a UUID will be generated")]
     pub pipeline_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct SetPipelineStateParams {
-    #[schemars(description = "Pipeline identifier")]
+    #[schemars(description = "Pipeline identifier (UUID or custom ID provided during launch)")]
     pub pipeline_id: String,
-    #[schemars(description = "Target state (null, ready, paused, playing)")]
+    #[schemars(description = "Target state: 'null' (stopped), 'ready' (prepared), 'paused' (paused), or 'playing' (active)")]
     pub state: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct GetPipelineStatusParams {
-    #[schemars(description = "Pipeline identifier")]
+    #[schemars(description = "Pipeline identifier (UUID or custom ID provided during launch)")]
     pub pipeline_id: String,
-    #[schemars(description = "Include recent bus messages")]
+    #[schemars(description = "Include recent bus messages (errors, warnings, info) in the response (default: false)")]
     pub include_messages: Option<bool>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct StopPipelineParams {
-    #[schemars(description = "Pipeline identifier")]
+    #[schemars(description = "Pipeline identifier (UUID or custom ID provided during launch)")]
     pub pipeline_id: String,
-    #[schemars(description = "Force termination")]
+    #[schemars(description = "Force termination even if pipeline is processing (default: false). Use with caution")]
     pub force: Option<bool>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct ListGstPipelinesParams {
-    #[schemars(description = "Include detailed information")]
+    #[schemars(description = "Include detailed information about each pipeline (state, duration, messages) (default: false)")]
     pub include_details: Option<bool>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct ValidatePipelineParams {
-    #[schemars(description = "Pipeline description to validate")]
+    #[schemars(description = "Pipeline description in gst-launch syntax to validate (e.g., 'filesrc location=video.mp4 ! decodebin ! autovideosink')")]
     pub pipeline_description: String,
 }
 
@@ -151,7 +151,7 @@ impl GStreamerHandler {
         self.enabled_tools.read().await.contains(tool_name)
     }
 
-    #[tool(description = "List all available GStreamer elements")]
+    #[tool(description = "Lists all available GStreamer elements with optional filtering. Accepts name filter and category filter (both optional). Returns element names, descriptions, plugin sources, and rank values.")]
     async fn gst_list_elements(
         &self,
         Parameters(params): Parameters<ListElementsParams>,
@@ -203,7 +203,7 @@ impl GStreamerHandler {
         Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
-    #[tool(description = "Get detailed information about a GStreamer element")]
+    #[tool(description = "Retrieves detailed information about a specific GStreamer element. Accepts element name (required). Returns properties with types/defaults, pad templates, signals, and classification.")]
     async fn gst_inspect_element(
         &self,
         Parameters(params): Parameters<InspectElementParams>,
@@ -262,7 +262,7 @@ impl GStreamerHandler {
         Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
-    #[tool(description = "List all available GStreamer plugins")]
+    #[tool(description = "Lists all available GStreamer plugins. Accepts name filter (optional). Returns plugin names, versions, descriptions, licenses, and contained elements.")]
     async fn gst_list_plugins(
         &self,
         Parameters(params): Parameters<ListPluginsParams>,
@@ -305,7 +305,7 @@ impl GStreamerHandler {
         Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
-    #[tool(description = "Search GStreamer elements by keyword")]
+    #[tool(description = "Searches for GStreamer elements by keyword. Accepts search query (required). Returns relevance-ranked results matching element names, descriptions, and classifications.")]
     async fn gst_search_elements(
         &self,
         Parameters(params): Parameters<SearchElementsParams>,
@@ -339,7 +339,7 @@ impl GStreamerHandler {
         Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
-    #[tool(description = "Launch a GStreamer pipeline from description")]
+    #[tool(description = "Creates and launches a GStreamer pipeline from description. Accepts gst-launch syntax, auto-play flag (default: true), and custom ID (optional). Returns pipeline ID and current state.")]
     async fn gst_launch_pipeline(
         &self,
         Parameters(params): Parameters<LaunchPipelineParams>,
@@ -379,7 +379,7 @@ impl GStreamerHandler {
         }
     }
 
-    #[tool(description = "Change the state of a running pipeline")]
+    #[tool(description = "Changes the state of an active pipeline. Accepts pipeline ID and target state (null/ready/paused/playing). Returns new state and transition success status.")]
     async fn gst_set_pipeline_state(
         &self,
         Parameters(params): Parameters<SetPipelineStateParams>,
@@ -416,7 +416,7 @@ impl GStreamerHandler {
         Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
-    #[tool(description = "Get current status of a pipeline")]
+    #[tool(description = "Retrieves current status of a pipeline. Accepts pipeline ID and include_messages flag (optional). Returns state, position, duration, and recent bus messages.")]
     async fn gst_get_pipeline_status(
         &self,
         Parameters(params): Parameters<GetPipelineStatusParams>,
@@ -460,7 +460,7 @@ impl GStreamerHandler {
         Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
-    #[tool(description = "Stop and cleanup a pipeline")]
+    #[tool(description = "Stops and releases resources for a pipeline. Accepts pipeline ID and force flag (optional). Returns cleanup status.")]
     async fn gst_stop_pipeline(
         &self,
         Parameters(params): Parameters<StopPipelineParams>,
@@ -478,7 +478,7 @@ impl GStreamerHandler {
         Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
-    #[tool(description = "List all active pipelines")]
+    #[tool(description = "Lists all currently active pipelines. Accepts include_details flag (optional). Returns pipeline IDs, descriptions, states, and creation times.")]
     async fn gst_list_pipelines(
         &self,
         Parameters(params): Parameters<ListGstPipelinesParams>,
@@ -506,7 +506,7 @@ impl GStreamerHandler {
         Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
-    #[tool(description = "Validate a pipeline description without launching")]
+    #[tool(description = "Validates pipeline description syntax without launching. Accepts gst-launch syntax description. Returns validation status and list of elements that would be created.")]
     async fn gst_validate_pipeline(
         &self,
         Parameters(params): Parameters<ValidatePipelineParams>,

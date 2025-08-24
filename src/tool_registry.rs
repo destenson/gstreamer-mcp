@@ -59,7 +59,7 @@ impl ToolRegistry {
             ToolMetadata::new(
                 "gst_list_elements",
                 ToolCategory::Discovery,
-                "List all available GStreamer elements with optional filtering",
+                "Lists all available GStreamer elements with optional filtering. Accepts name filter and category filter (both optional). Returns element names, descriptions, plugin sources, and rank values. Use to discover available media processing components.",
                 vec![OperationalMode::All, OperationalMode::Live, OperationalMode::Dev, OperationalMode::Discovery],
             ),
         );
@@ -69,7 +69,7 @@ impl ToolRegistry {
             ToolMetadata::new(
                 "gst_inspect_element",
                 ToolCategory::Discovery,
-                "Get detailed information about a specific GStreamer element",
+                "Retrieves detailed information about a specific GStreamer element. Accepts element name (required). Returns properties with types/defaults, pad templates, signals, and classification. Use to understand element capabilities and configuration options.",
                 vec![OperationalMode::All, OperationalMode::Live, OperationalMode::Dev, OperationalMode::Discovery],
             ),
         );
@@ -79,7 +79,7 @@ impl ToolRegistry {
             ToolMetadata::new(
                 "gst_list_plugins",
                 ToolCategory::Discovery,
-                "List all available GStreamer plugins",
+                "Lists all available GStreamer plugins. Accepts name filter (optional). Returns plugin names, versions, descriptions, licenses, and contained elements. Use to explore available plugin functionality.",
                 vec![OperationalMode::All, OperationalMode::Live, OperationalMode::Dev, OperationalMode::Discovery],
             ),
         );
@@ -89,7 +89,7 @@ impl ToolRegistry {
             ToolMetadata::new(
                 "gst_search_elements",
                 ToolCategory::Discovery,
-                "Search for elements by keyword with relevance ranking",
+                "Searches for GStreamer elements by keyword. Accepts search query (required). Returns relevance-ranked results matching element names, descriptions, and classifications. Use to find elements for specific media processing tasks.",
                 vec![OperationalMode::All, OperationalMode::Live, OperationalMode::Dev, OperationalMode::Discovery],
             ),
         );
@@ -100,7 +100,7 @@ impl ToolRegistry {
             ToolMetadata::new(
                 "gst_launch_pipeline",
                 ToolCategory::Pipeline,
-                "Launch a GStreamer pipeline from a description string",
+                "Creates and launches a GStreamer pipeline from description. Accepts gst-launch syntax, auto-play flag (default: true), and custom ID (optional). Returns pipeline ID and current state. Use to start media processing pipelines.",
                 vec![OperationalMode::All, OperationalMode::Live],
             ),
         );
@@ -110,7 +110,7 @@ impl ToolRegistry {
             ToolMetadata::new(
                 "gst_set_pipeline_state",
                 ToolCategory::Pipeline,
-                "Change the state of a running pipeline",
+                "Changes the state of an active pipeline. Accepts pipeline ID and target state (null/ready/paused/playing). Returns new state and transition success status. Use to control pipeline playback and processing.",
                 vec![OperationalMode::All, OperationalMode::Live],
             ),
         );
@@ -120,7 +120,7 @@ impl ToolRegistry {
             ToolMetadata::new(
                 "gst_get_pipeline_status",
                 ToolCategory::Pipeline,
-                "Get current status and information about a pipeline",
+                "Retrieves current status of a pipeline. Accepts pipeline ID and include_messages flag (optional). Returns state, position, duration, and recent bus messages. Use to monitor pipeline health and playback progress.",
                 vec![OperationalMode::All, OperationalMode::Live, OperationalMode::Discovery],
             ),
         );
@@ -130,7 +130,7 @@ impl ToolRegistry {
             ToolMetadata::new(
                 "gst_stop_pipeline",
                 ToolCategory::Pipeline,
-                "Stop and cleanup a pipeline",
+                "Stops and releases resources for a pipeline. Accepts pipeline ID and force flag (optional). Returns cleanup status. Use to properly terminate pipelines and free resources.",
                 vec![OperationalMode::All, OperationalMode::Live],
             ),
         );
@@ -140,7 +140,7 @@ impl ToolRegistry {
             ToolMetadata::new(
                 "gst_list_pipelines",
                 ToolCategory::Pipeline,
-                "List all active pipelines",
+                "Lists all currently active pipelines. Accepts include_details flag (optional). Returns pipeline IDs, descriptions, states, and creation times. Use to manage multiple concurrent pipelines.",
                 vec![OperationalMode::All, OperationalMode::Live, OperationalMode::Discovery],
             ),
         );
@@ -150,7 +150,7 @@ impl ToolRegistry {
             ToolMetadata::new(
                 "gst_validate_pipeline",
                 ToolCategory::Pipeline,
-                "Validate a pipeline description without launching it",
+                "Validates pipeline description syntax without launching. Accepts gst-launch syntax description. Returns validation status and list of elements that would be created. Use to verify pipeline correctness before execution.",
                 vec![OperationalMode::All, OperationalMode::Live, OperationalMode::Dev, OperationalMode::Discovery],
             ),
         );
