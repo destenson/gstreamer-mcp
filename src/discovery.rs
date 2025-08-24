@@ -190,9 +190,11 @@ pub fn inspect_element(element_name: &str) -> Result<ElementDetailedInfo> {
     // Try to find the plugin that provides this element
     let plugin_name = registry
         .plugins()
+        .into_iter()
         .find(|plugin| {
             registry
                 .features_by_plugin(&plugin.plugin_name())
+                .into_iter()
                 .any(|feature| {
                     if let Ok(f) = feature.downcast::<gst::ElementFactory>() {
                         f.name() == element_name
@@ -242,10 +244,9 @@ fn get_element_properties(element: &gst::Element) -> Result<Vec<PropertyInfo>> {
         }
 
         // For default value, we'll use a simple string representation
-        let default_value = if let Ok(value) = element.property_value(prop.name()) {
+        let default_value = {
+            let value = element.property_value(prop.name());
             Some(format!("{:?}", value))
-        } else {
-            None
         };
 
         prop_infos.push(PropertyInfo {
@@ -265,11 +266,8 @@ fn get_pad_templates(factory: &gst::ElementFactory) -> Vec<PadTemplateInfo> {
     let mut templates = Vec::new();
     
     for pad_template in factory.static_pad_templates() {
-        let caps_str = if let Some(caps) = pad_template.caps() {
-            caps.to_string()
-        } else {
-            "ANY".to_string()
-        };
+        let caps = pad_template.caps();
+        let caps_str = caps.to_string();
         
         templates.push(PadTemplateInfo {
             name: pad_template.name_template().to_string(),
