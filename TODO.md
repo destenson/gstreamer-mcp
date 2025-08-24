@@ -54,7 +54,14 @@ Core MCP server with element discovery and pipeline management tools complete. A
 - [x] Implement `ListGstPipelines` for active pipeline tracking (COMPLETED)
 - [x] Add `ValidatePipeline` for syntax validation (COMPLETED)
 
-### 5. Element Suggestions (PRP-03)
+### 5. Seek and Playback Control (PRP-06) - NEW
+- [ ] Implement `SeekToPipeline` tool for position seeking
+- [ ] Add `SetPlaybackRate` for speed control (fast-forward/rewind)
+- [ ] Implement `StepFramePipeline` for frame-by-frame navigation
+- [ ] Add `GetPipelinePosition` to query current playback position
+- [ ] Implement `GetPipelineDuration` to get media duration
+
+### 6. Element Suggestions (PRP-03)
 - [ ] Build element index with keyword extraction
 - [ ] Implement `SuggestGstElements` with intent mapping
 - [ ] Add `FindSimilarGstElements` with similarity scoring
@@ -64,7 +71,7 @@ Core MCP server with element discovery and pipeline management tools complete. A
 
 ## Low Priority 🟢
 
-### 6. Programming Assistants (PRP-04 & PRP-05)
+### 7. Programming Assistants (PRP-04 & PRP-05)
 - [ ] **GStreamer-rs Code Assistant**
   - [ ] Implement `GeneratePipelineCode` for Rust code generation
   - [ ] Add `ConvertLaunchToCode` for pipeline conversion
@@ -137,5 +144,5 @@ Core MCP server with element discovery and pipeline management tools complete. A
 - Different operational modes (live, dev, discovery) provide targeted tool sets for specific use cases
 
 ---
-*Last Updated: 2025-08-24 - Completed PRP-02 Pipeline Management Tools*
+*Last Updated: 2025-08-23 - Added PRP-06 Seek and Playback Control tasks*
 *Priority Levels: 🔴 High (Critical for MVP) | 🟡 Medium (Core features) | 🟢 Low (Nice to have)*
