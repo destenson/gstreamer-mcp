@@ -2,6 +2,8 @@ use crate::config::Configuration;
 use crate::discovery::{
     discover_all_elements, discover_all_plugins, inspect_element, search_elements, DiscoveryCache,
 };
+use crate::pipeline::{PipelineManager, validate_pipeline_description};
+use gstreamer as gst;
 use rmcp::{
     handler::server::{router::tool::ToolRouter, tool::Parameters},
     model::*,
@@ -40,10 +42,57 @@ pub struct SearchElementsParams {
     pub query: String,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct LaunchPipelineParams {
+    #[schemars(description = "Pipeline description in gst-launch syntax")]
+    pub pipeline_description: String,
+    #[schemars(description = "Whether to start the pipeline immediately")]
+    pub auto_play: Option<bool>,
+    #[schemars(description = "Optional custom pipeline ID")]
+    pub pipeline_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct SetPipelineStateParams {
+    #[schemars(description = "Pipeline identifier")]
+    pub pipeline_id: String,
+    #[schemars(description = "Target state (null, ready, paused, playing)")]
+    pub state: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct GetPipelineStatusParams {
+    #[schemars(description = "Pipeline identifier")]
+    pub pipeline_id: String,
+    #[schemars(description = "Include recent bus messages")]
+    pub include_messages: Option<bool>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct StopPipelineParams {
+    #[schemars(description = "Pipeline identifier")]
+    pub pipeline_id: String,
+    #[schemars(description = "Force termination")]
+    pub force: Option<bool>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct ListGstPipelinesParams {
+    #[schemars(description = "Include detailed information")]
+    pub include_details: Option<bool>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct ValidatePipelineParams {
+    #[schemars(description = "Pipeline description to validate")]
+    pub pipeline_description: String,
+}
+
 #[derive(Clone)]
 pub struct GStreamerHandler {
     pub config: Arc<RwLock<Configuration>>,
     pub cache: Arc<DiscoveryCache>,
+    pub pipeline_manager: Arc<PipelineManager>,
     tool_router: ToolRouter<GStreamerHandler>,
 }
 
@@ -52,20 +101,24 @@ impl GStreamerHandler {
     pub async fn new() -> crate::Result<Self> {
         let config = Configuration::default();
         let cache = DiscoveryCache::new();
+        let pipeline_manager = PipelineManager::new(10); // Max 10 concurrent pipelines
 
         Ok(Self {
             config: Arc::new(RwLock::new(config)),
             cache: Arc::new(cache),
+            pipeline_manager: Arc::new(pipeline_manager),
             tool_router: Self::tool_router(),
         })
     }
 
     pub async fn with_config(config: Configuration) -> crate::Result<Self> {
         let cache = DiscoveryCache::new();
+        let pipeline_manager = PipelineManager::new(10); // Max 10 concurrent pipelines
 
         Ok(Self {
             config: Arc::new(RwLock::new(config)),
             cache: Arc::new(cache),
+            pipeline_manager: Arc::new(pipeline_manager),
             tool_router: Self::tool_router(),
         })
     }
@@ -248,6 +301,178 @@ impl GStreamerHandler {
 
         Ok(CallToolResult::success(vec![Content::text(output)]))
     }
+
+    #[tool(description = "Launch a GStreamer pipeline from description")]
+    async fn gst_launch_pipeline(
+        &self,
+        Parameters(params): Parameters<LaunchPipelineParams>,
+    ) -> Result<CallToolResult, McpError> {
+        // Create the pipeline
+        let pipeline_id = self.pipeline_manager
+            .create_pipeline(&params.pipeline_description, params.pipeline_id)
+            .map_err(Into::<McpError>::into)?;
+        
+        // Auto-play if requested (default is true)
+        let auto_play = params.auto_play.unwrap_or(true);
+        if auto_play {
+            let state = self.pipeline_manager
+                .set_pipeline_state(&pipeline_id, gst::State::Playing)
+                .map_err(Into::<McpError>::into)?;
+            
+            let output = format!(
+                "Pipeline '{}' launched successfully.\nState: {:?}\nDescription: {}",
+                pipeline_id, state, params.pipeline_description
+            );
+            Ok(CallToolResult::success(vec![Content::text(output)]))
+        } else {
+            let output = format!(
+                "Pipeline '{}' created successfully in NULL state.\nDescription: {}",
+                pipeline_id, params.pipeline_description
+            );
+            Ok(CallToolResult::success(vec![Content::text(output)]))
+        }
+    }
+
+    #[tool(description = "Change the state of a running pipeline")]
+    async fn gst_set_pipeline_state(
+        &self,
+        Parameters(params): Parameters<SetPipelineStateParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let state = match params.state.to_lowercase().as_str() {
+            "null" => gst::State::Null,
+            "ready" => gst::State::Ready,
+            "paused" => gst::State::Paused,
+            "playing" => gst::State::Playing,
+            _ => return Err(McpError {
+                code: rmcp::model::ErrorCode(-32003),
+                message: format!("Invalid state '{}'. Must be one of: null, ready, paused, playing", params.state).into(),
+                data: None,
+            }),
+        };
+        
+        let current_state = self.pipeline_manager
+            .set_pipeline_state(&params.pipeline_id, state)
+            .map_err(Into::<McpError>::into)?;
+        
+        let output = format!(
+            "Pipeline '{}' state changed to {:?}",
+            params.pipeline_id, current_state
+        );
+        Ok(CallToolResult::success(vec![Content::text(output)]))
+    }
+
+    #[tool(description = "Get current status of a pipeline")]
+    async fn gst_get_pipeline_status(
+        &self,
+        Parameters(params): Parameters<GetPipelineStatusParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let status = self.pipeline_manager
+            .get_pipeline_status(&params.pipeline_id)
+            .map_err(Into::<McpError>::into)?;
+        
+        let mut output = format!(
+            "Pipeline: {}\nDescription: {}\nState: {}\n",
+            status.id, status.description, status.state
+        );
+        
+        if let Some(pending) = status.pending_state {
+            output.push_str(&format!("Pending State: {}\n", pending));
+        }
+        
+        if status.position >= 0 {
+            output.push_str(&format!("Position: {} ns\n", status.position));
+        }
+        if status.duration >= 0 {
+            output.push_str(&format!("Duration: {} ns\n", status.duration));
+        }
+        
+        output.push_str(&format!("Errors: {}, Warnings: {}\n", status.error_count, status.warning_count));
+        output.push_str(&format!("Created: {}\nLast State Change: {}\n", 
+            status.created_at, status.last_state_change));
+        
+        // Include messages if requested
+        if params.include_messages.unwrap_or(false) {
+            let messages = self.pipeline_manager.get_bus_messages(&params.pipeline_id, 10);
+            if !messages.is_empty() {
+                output.push_str("\nRecent Messages:\n");
+                for msg in messages {
+                    output.push_str(&format!("  [{}] {}: {}\n", 
+                        msg.timestamp, msg.message_type, msg.message));
+                }
+            }
+        }
+        
+        Ok(CallToolResult::success(vec![Content::text(output)]))
+    }
+
+    #[tool(description = "Stop and cleanup a pipeline")]
+    async fn gst_stop_pipeline(
+        &self,
+        Parameters(params): Parameters<StopPipelineParams>,
+    ) -> Result<CallToolResult, McpError> {
+        // First set to NULL state
+        let _ = self.pipeline_manager
+            .set_pipeline_state(&params.pipeline_id, gst::State::Null);
+        
+        // Then remove the pipeline
+        self.pipeline_manager
+            .remove_pipeline(&params.pipeline_id)
+            .map_err(Into::<McpError>::into)?;
+        
+        let output = format!("Pipeline '{}' stopped and removed successfully", params.pipeline_id);
+        Ok(CallToolResult::success(vec![Content::text(output)]))
+    }
+
+    #[tool(description = "List all active pipelines")]
+    async fn gst_list_pipelines(
+        &self,
+        Parameters(params): Parameters<ListGstPipelinesParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let pipelines = self.pipeline_manager.list_pipelines();
+        
+        if pipelines.is_empty() {
+            return Ok(CallToolResult::success(vec![Content::text("No active pipelines".to_string())]));
+        }
+        
+        let mut output = format!("Active pipelines: {}\n\n", pipelines.len());
+        
+        for pipeline in pipelines {
+            if params.include_details.unwrap_or(false) {
+                output.push_str(&format!(
+                    "ID: {}\n  Description: {}\n  State: {}\n  Created: {}\n  Errors: {}, Warnings: {}\n\n",
+                    pipeline.id, pipeline.description, pipeline.state, 
+                    pipeline.created_at, pipeline.error_count, pipeline.warning_count
+                ));
+            } else {
+                output.push_str(&format!("- {} ({})\n", pipeline.id, pipeline.state));
+            }
+        }
+        
+        Ok(CallToolResult::success(vec![Content::text(output)]))
+    }
+
+    #[tool(description = "Validate a pipeline description without launching")]
+    async fn gst_validate_pipeline(
+        &self,
+        Parameters(params): Parameters<ValidatePipelineParams>,
+    ) -> Result<CallToolResult, McpError> {
+        match validate_pipeline_description(&params.pipeline_description) {
+            Ok(elements) => {
+                let mut output = format!(
+                    "Pipeline description is valid!\n\nElements that would be created ({}):\n",
+                    elements.len()
+                );
+                for element in elements {
+                    output.push_str(&format!("- {}\n", element));
+                }
+                Ok(CallToolResult::success(vec![Content::text(output)]))
+            }
+            Err(e) => {
+                let output = format!("Pipeline validation failed:\n{}", e);
+                Ok(CallToolResult::success(vec![Content::text(output)]))
+            }
+        }
+    }
 }
 
 #[tool_handler]
@@ -261,8 +486,9 @@ impl ServerHandler for GStreamerHandler {
                 version: env!("CARGO_PKG_VERSION").to_string(),
             },
             instructions: Some(
-                "This server provides GStreamer element discovery and inspection tools. \
-                 You can list elements, inspect their properties, list plugins, and search for elements by keyword."
+                "This server provides GStreamer element discovery, inspection, and pipeline management tools. \
+                 You can list elements, inspect their properties, list plugins, search for elements by keyword, \
+                 launch pipelines, control pipeline states, and monitor pipeline status."
                     .to_string(),
             ),
         }

@@ -1,15 +1,24 @@
 # GStreamer MCP Server
 
-A Model Context Protocol (MCP) server that provides GStreamer element discovery and inspection capabilities to AI assistants and other MCP clients.
+A Model Context Protocol (MCP) server that provides GStreamer element discovery, inspection, and pipeline management capabilities to AI assistants and other MCP clients.
 
 ## Features
 
-This MCP server implements four primary tools for interacting with GStreamer:
+This MCP server implements comprehensive tools for GStreamer element discovery and pipeline management:
 
+### Element Discovery Tools
 1. **gst_list_elements** - List all available GStreamer elements with optional filtering
 2. **gst_inspect_element** - Get detailed information about a specific GStreamer element including properties, pad templates, and signals
 3. **gst_list_plugins** - List all available GStreamer plugins and their elements
 4. **gst_search_elements** - Search for elements by keyword with relevance ranking
+
+### Pipeline Management Tools
+5. **gst_launch_pipeline** - Launch a GStreamer pipeline from a description string
+6. **gst_set_pipeline_state** - Change the state of a running pipeline (null, ready, paused, playing)
+7. **gst_get_pipeline_status** - Get current status, position, and messages for a pipeline
+8. **gst_stop_pipeline** - Stop and cleanup a pipeline
+9. **gst_list_pipelines** - List all active pipelines
+10. **gst_validate_pipeline** - Validate a pipeline description without launching it
 
 ## Installation
 
@@ -122,6 +131,133 @@ Returns:
 - Pad templates showing input/output capabilities
 - Supported signals (if any)
 
+### gst_launch_pipeline
+
+Launch a GStreamer pipeline from a description string.
+
+**Parameters:**
+- `pipeline_description` (required): Pipeline description in gst-launch syntax
+- `auto_play` (optional): Whether to start the pipeline immediately (default: true)
+- `pipeline_id` (optional): Custom pipeline ID (auto-generated if not provided)
+
+**Example:**
+```json
+{
+  "name": "gst_launch_pipeline",
+  "arguments": {
+    "pipeline_description": "videotestsrc ! autovideosink",
+    "auto_play": true
+  }
+}
+```
+
+Returns:
+- Pipeline ID for future operations
+- Current pipeline state
+- Launch success status
+
+### gst_set_pipeline_state
+
+Change the state of a running pipeline.
+
+**Parameters:**
+- `pipeline_id` (required): Pipeline identifier
+- `state` (required): Target state ("null", "ready", "paused", "playing")
+
+**Example:**
+```json
+{
+  "name": "gst_set_pipeline_state",
+  "arguments": {
+    "pipeline_id": "pipeline-abc123",
+    "state": "paused"
+  }
+}
+```
+
+### gst_get_pipeline_status
+
+Get current status and information about a pipeline.
+
+**Parameters:**
+- `pipeline_id` (required): Pipeline identifier
+- `include_messages` (optional): Include recent bus messages (default: false)
+
+**Example:**
+```json
+{
+  "name": "gst_get_pipeline_status",
+  "arguments": {
+    "pipeline_id": "pipeline-abc123",
+    "include_messages": true
+  }
+}
+```
+
+Returns:
+- Current state and pending state
+- Position and duration (if available)
+- Error and warning counts
+- Creation time and last state change
+- Recent bus messages (if requested)
+
+### gst_stop_pipeline
+
+Stop and cleanup a pipeline.
+
+**Parameters:**
+- `pipeline_id` (required): Pipeline identifier
+- `force` (optional): Force termination (default: false)
+
+**Example:**
+```json
+{
+  "name": "gst_stop_pipeline",
+  "arguments": {
+    "pipeline_id": "pipeline-abc123"
+  }
+}
+```
+
+### gst_list_pipelines
+
+List all active pipelines.
+
+**Parameters:**
+- `include_details` (optional): Include detailed information (default: false)
+
+**Example:**
+```json
+{
+  "name": "gst_list_pipelines",
+  "arguments": {
+    "include_details": true
+  }
+}
+```
+
+### gst_validate_pipeline
+
+Validate a pipeline description without launching it.
+
+**Parameters:**
+- `pipeline_description` (required): Pipeline description to validate
+
+**Example:**
+```json
+{
+  "name": "gst_validate_pipeline",
+  "arguments": {
+    "pipeline_description": "videotestsrc ! autovideosink"
+  }
+}
+```
+
+Returns:
+- Validation status (valid/invalid)
+- List of elements that would be created
+- Error details (if invalid)
+
 ### gst_list_plugins
 
 Lists all available GStreamer plugins.
@@ -189,6 +325,8 @@ gstreamer-mcp/
 │   ├── main.rs         # Entry point and server initialization
 │   ├── handler.rs      # MCP request handler and tool implementations
 │   ├── discovery.rs    # GStreamer element discovery logic
+│   ├── pipeline.rs     # Pipeline management and state tracking
+│   ├── bus_handler.rs  # GStreamer bus message handling
 │   ├── error.rs        # Error types and conversions
 │   ├── config.rs       # Configuration management
 │   └── lib.rs          # Library exports
@@ -199,9 +337,12 @@ gstreamer-mcp/
 
 ### Adding New Tools
 
-1. Define the tool parameters struct in `handler.rs`
+1. Define the tool parameters struct in `handler.rs` with JsonSchema derive
 2. Implement the tool method with `#[tool]` attribute
-3. Add discovery logic in `discovery.rs` if needed
+3. Add logic in appropriate modules:
+   - Element discovery: `discovery.rs`
+   - Pipeline management: `pipeline.rs`
+   - Bus message handling: `bus_handler.rs`
 4. Update this README with the new tool documentation
 
 ## License

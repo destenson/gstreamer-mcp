@@ -21,6 +21,9 @@ pub enum GStreamerMcpError {
     #[error("Property inspection failed: {0}")]
     PropertyError(String),
 
+    #[error("Pipeline error: {0}")]
+    PipelineError(String),
+
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 
@@ -42,6 +45,7 @@ impl From<GStreamerMcpError> for McpError {
             GStreamerMcpError::GStreamerInit(_) => -32004,
             GStreamerMcpError::RegistryError(_) => -32005,
             GStreamerMcpError::PropertyError(_) => -32006,
+            GStreamerMcpError::PipelineError(_) => -32007,
             _ => -32000,
         };
         

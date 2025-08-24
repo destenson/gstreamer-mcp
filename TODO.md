@@ -1,7 +1,7 @@
 # TODO List - GStreamer MCP Server
 
 ## Project Status
-Core MCP server implementation complete with basic GStreamer discovery tools. Element discovery tools (list, inspect, search) are functional. Ready to implement CLI modes and pipeline management features.
+Core MCP server with element discovery and pipeline management tools complete. All 10 tools from PRP-01 and PRP-02 are functional. Ready to implement element suggestions (PRP-03) and programming assistants (PRP-04/05).
 
 ## High Priority 🔴
 
@@ -46,13 +46,13 @@ Core MCP server implementation complete with basic GStreamer discovery tools. El
 - [ ] **Implement signal discovery** (src/discovery.rs:188 - Currently returns empty Vec)
 
 ### 4. Pipeline Management (PRP-02)
-- [ ] Implement `LaunchPipeline` tool with gst::parse_launch
-- [ ] Add pipeline state management with unique IDs
-- [ ] Implement `SetPipelineState` for pipeline control
-- [ ] Implement `GetPipelineStatus` with bus message handling
-- [ ] Add `StopPipeline` with proper cleanup
-- [ ] Implement `ListGstPipelines` for active pipeline tracking
-- [ ] Add `ValidatePipeline` for syntax validation
+- [x] Implement `LaunchPipeline` tool with gst::parse_launch (COMPLETED)
+- [x] Add pipeline state management with unique IDs (COMPLETED)
+- [x] Implement `SetPipelineState` for pipeline control (COMPLETED)
+- [x] Implement `GetPipelineStatus` with bus message handling (COMPLETED)
+- [x] Add `StopPipeline` with proper cleanup (COMPLETED)
+- [x] Implement `ListGstPipelines` for active pipeline tracking (COMPLETED)
+- [x] Add `ValidatePipeline` for syntax validation (COMPLETED)
 
 ### 5. Element Suggestions (PRP-03)
 - [ ] Build element index with keyword extraction
@@ -137,5 +137,5 @@ Core MCP server implementation complete with basic GStreamer discovery tools. El
 - Different operational modes (live, dev, discovery) provide targeted tool sets for specific use cases
 
 ---
-*Last Updated: 2025-08-23 - Updated with completed tasks and code TODOs*
+*Last Updated: 2025-08-24 - Completed PRP-02 Pipeline Management Tools*
 *Priority Levels: 🔴 High (Critical for MVP) | 🟡 Medium (Core features) | 🟢 Low (Nice to have)*
