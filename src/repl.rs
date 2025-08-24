@@ -1,8 +1,4 @@
-use crate::{
-    config::Configuration, 
-    handler::GStreamerHandler, 
-    pipeline::PipelineManager
-};
+use crate::{config::Configuration, handler::GStreamerHandler, pipeline::PipelineManager};
 use anyhow::Result;
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
@@ -75,7 +71,10 @@ impl ReplCommand {
                 Ok(Self::Validate(parts[1..].join(" ")))
             }
             "exit" | "quit" | "q" => Ok(Self::Exit),
-            _ => anyhow::bail!("Unknown command: {}. Type 'help' for available commands.", parts[0]),
+            _ => anyhow::bail!(
+                "Unknown command: {}. Type 'help' for available commands.",
+                parts[0]
+            ),
         }
     }
 }
@@ -90,7 +89,7 @@ pub async fn run_repl(config: Configuration) -> Result<()> {
 
     // Create handler (which contains the pipeline manager)
     let handler = GStreamerHandler::with_config(config).await?;
-    
+
     // Get the pipeline manager from the handler
     let pipeline_manager = handler.pipeline_manager.clone();
 
@@ -116,7 +115,13 @@ pub async fn run_repl(config: Configuration) -> Result<()> {
                 // Parse and execute command
                 match ReplCommand::parse(line) {
                     Ok(cmd) => {
-                        let result = execute_command(cmd, &handler, &pipeline_manager, &mut last_pipeline_id).await;
+                        let result = execute_command(
+                            cmd,
+                            &handler,
+                            &pipeline_manager,
+                            &mut last_pipeline_id,
+                        )
+                        .await;
                         match result {
                             Ok(should_exit) => {
                                 if should_exit {
@@ -168,8 +173,10 @@ async fn execute_command(
             } else {
                 println!("Active pipelines:");
                 for info in pipelines {
-                    println!("  {} - State: {}, Description: {}", 
-                             info.id, info.state, info.description);
+                    println!(
+                        "  {} - State: {}, Description: {}",
+                        info.id, info.state, info.description
+                    );
                 }
             }
             Ok(false)
@@ -178,7 +185,9 @@ async fn execute_command(
             match pipeline_manager.create_pipeline(&description, None) {
                 Ok(id) => {
                     // Auto-play the pipeline
-                    if let Err(e) = pipeline_manager.set_pipeline_state(&id, gstreamer::State::Playing) {
+                    if let Err(e) =
+                        pipeline_manager.set_pipeline_state(&id, gstreamer::State::Playing)
+                    {
                         eprintln!("Pipeline created but failed to play: {}", e);
                     } else {
                         println!("Pipeline launched successfully with ID: {}", id);
@@ -219,8 +228,10 @@ async fn execute_command(
                     if status.duration > 0 {
                         println!("  Duration: {}s", status.duration);
                     }
-                    println!("  Errors: {}, Warnings: {}", 
-                             status.error_count, status.warning_count);
+                    println!(
+                        "  Errors: {}, Warnings: {}",
+                        status.error_count, status.warning_count
+                    );
                 }
                 Err(e) => {
                     eprintln!("Failed to get pipeline status: {}", e);
@@ -236,11 +247,14 @@ async fn execute_command(
                 "paused" => gstreamer::State::Paused,
                 "playing" => gstreamer::State::Playing,
                 _ => {
-                    eprintln!("Invalid state: {}. Use null, ready, paused, or playing", state);
+                    eprintln!(
+                        "Invalid state: {}. Use null, ready, paused, or playing",
+                        state
+                    );
                     return Ok(false);
                 }
             };
-            
+
             match pipeline_manager.set_pipeline_state(&pipeline_id, gst_state) {
                 Ok(new_state) => {
                     println!("Pipeline {} state changed to: {:?}", pipeline_id, new_state);
@@ -259,7 +273,10 @@ async fn execute_command(
                     println!("Classification: {}", info.classification);
                     println!("\nProperties:");
                     for prop in &info.properties {
-                        println!("  {} ({}) - {}", prop.name, prop.type_name, prop.description);
+                        println!(
+                            "  {} ({}) - {}",
+                            prop.name, prop.type_name, prop.description
+                        );
                     }
                     println!("\nPad Templates:");
                     for pad in &info.pad_templates {
@@ -280,8 +297,7 @@ async fn execute_command(
                     } else {
                         println!("Elements matching '{}':", query);
                         for result in results.iter().take(10) {
-                            println!("  {} - {}", 
-                                     result.name, result.classification);
+                            println!("  {} - {}", result.name, result.classification);
                         }
                         if results.len() > 10 {
                             println!("  ... and {} more", results.len() - 10);

@@ -23,13 +23,13 @@ impl BusHandler {
         mut shutdown_rx: mpsc::Receiver<()>,
     ) {
         let bus = pipeline.bus().expect("Pipeline should have a bus");
-        
+
         // Set up bus watch
         bus.add_signal_watch();
-        
+
         // Create a stream for bus messages
         let mut messages = bus.stream();
-        
+
         loop {
             tokio::select! {
                 Some(msg) = messages.next() => {
@@ -41,7 +41,7 @@ impl BusHandler {
                 }
             }
         }
-        
+
         // Cleanup
         bus.remove_signal_watch();
     }
@@ -181,7 +181,7 @@ impl BusHandler {
                 return;
             }
         };
-        
+
         // Store the message
         self.pipeline_manager.add_bus_message(pipeline_id, message);
     }
@@ -198,7 +198,7 @@ pub fn create_blocking_bus_handler(
         .ok_or_else(|| "Pipeline has no bus".to_string())?;
 
     let timeout = timeout.unwrap_or(gst::ClockTime::from_seconds(5));
-    
+
     loop {
         match bus.timed_pop(timeout) {
             Some(msg) => {
@@ -206,11 +206,11 @@ pub fn create_blocking_bus_handler(
                     msg.view(),
                     gst::MessageView::Eos(_) | gst::MessageView::Error(_)
                 );
-                
+
                 // Create and store the message
                 let bus_message = message_to_bus_message(&msg);
                 pipeline_manager.add_bus_message(pipeline_id, bus_message);
-                
+
                 if should_break {
                     break;
                 }
@@ -221,7 +221,7 @@ pub fn create_blocking_bus_handler(
             }
         }
     }
-    
+
     Ok(())
 }
 

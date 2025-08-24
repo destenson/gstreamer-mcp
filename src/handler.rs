@@ -2,15 +2,15 @@ use crate::config::Configuration;
 use crate::discovery::{
     discover_all_elements, discover_all_plugins, inspect_element, search_elements, DiscoveryCache,
 };
-use crate::pipeline::{PipelineManager, validate_pipeline_description};
+use crate::pipeline::{validate_pipeline_description, PipelineManager};
 use crate::tool_registry::ToolRegistry;
 use gstreamer as gst;
 use rmcp::{
     handler::server::{router::tool::ToolRouter, tool::Parameters},
-    model::{*, ErrorCode},
-    schemars, schemars::JsonSchema,
-    tool, tool_handler, tool_router,
-    ErrorData as McpError, ServerHandler,
+    model::{ErrorCode, *},
+    schemars,
+    schemars::JsonSchema,
+    tool, tool_handler, tool_router, ErrorData as McpError, ServerHandler,
 };
 use serde::{Deserialize, Serialize};
 use std::future::Future;
@@ -19,37 +19,53 @@ use tokio::sync::RwLock;
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct ListElementsParams {
-    #[schemars(description = "Optional filter to match element names (e.g., 'video' to find videotestsrc, videoconvert, etc.)")]
+    #[schemars(
+        description = "Optional filter to match element names (e.g., 'video' to find videotestsrc, videoconvert, etc.)"
+    )]
     pub filter: Option<String>,
-    #[schemars(description = "Optional category to filter elements by classification (e.g., 'Source', 'Sink', 'Filter', 'Codec')")]
+    #[schemars(
+        description = "Optional category to filter elements by classification (e.g., 'Source', 'Sink', 'Filter', 'Codec')"
+    )]
     pub category: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct InspectElementParams {
-    #[schemars(description = "Name of the GStreamer element to inspect (e.g., 'videotestsrc', 'x264enc', 'filesink')")]
+    #[schemars(
+        description = "Name of the GStreamer element to inspect (e.g., 'videotestsrc', 'x264enc', 'filesink')"
+    )]
     pub element_name: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct ListPluginsParams {
-    #[schemars(description = "Optional filter to match plugin names (e.g., 'core' for coreelements, 'good' for good plugins)")]
+    #[schemars(
+        description = "Optional filter to match plugin names (e.g., 'core' for coreelements, 'good' for good plugins)"
+    )]
     pub filter: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct SearchElementsParams {
-    #[schemars(description = "Search query to match against element names, descriptions, and classifications (e.g., 'encoder', 'mp4', 'audio')")]
+    #[schemars(
+        description = "Search query to match against element names, descriptions, and classifications (e.g., 'encoder', 'mp4', 'audio')"
+    )]
     pub query: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct LaunchPipelineParams {
-    #[schemars(description = "Pipeline description in gst-launch syntax (e.g., 'videotestsrc ! autovideosink')")]
+    #[schemars(
+        description = "Pipeline description in gst-launch syntax (e.g., 'videotestsrc ! autovideosink')"
+    )]
     pub pipeline_description: String,
-    #[schemars(description = "Whether to start the pipeline immediately (default: true). Set to false to create in PAUSED state")]
+    #[schemars(
+        description = "Whether to start the pipeline immediately (default: true). Set to false to create in PAUSED state"
+    )]
     pub auto_play: Option<bool>,
-    #[schemars(description = "Optional custom pipeline ID. If not provided, a UUID will be generated")]
+    #[schemars(
+        description = "Optional custom pipeline ID. If not provided, a UUID will be generated"
+    )]
     pub pipeline_id: Option<String>,
 }
 
@@ -57,7 +73,9 @@ pub struct LaunchPipelineParams {
 pub struct SetPipelineStateParams {
     #[schemars(description = "Pipeline identifier (UUID or custom ID provided during launch)")]
     pub pipeline_id: String,
-    #[schemars(description = "Target state: 'null' (stopped), 'ready' (prepared), 'paused' (paused), or 'playing' (active)")]
+    #[schemars(
+        description = "Target state: 'null' (stopped), 'ready' (prepared), 'paused' (paused), or 'playing' (active)"
+    )]
     pub state: String,
 }
 
@@ -65,7 +83,9 @@ pub struct SetPipelineStateParams {
 pub struct GetPipelineStatusParams {
     #[schemars(description = "Pipeline identifier (UUID or custom ID provided during launch)")]
     pub pipeline_id: String,
-    #[schemars(description = "Include recent bus messages (errors, warnings, info) in the response (default: false)")]
+    #[schemars(
+        description = "Include recent bus messages (errors, warnings, info) in the response (default: false)"
+    )]
     pub include_messages: Option<bool>,
 }
 
@@ -73,19 +93,25 @@ pub struct GetPipelineStatusParams {
 pub struct StopPipelineParams {
     #[schemars(description = "Pipeline identifier (UUID or custom ID provided during launch)")]
     pub pipeline_id: String,
-    #[schemars(description = "Force termination even if pipeline is processing (default: false). Use with caution")]
+    #[schemars(
+        description = "Force termination even if pipeline is processing (default: false). Use with caution"
+    )]
     pub force: Option<bool>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct ListGstPipelinesParams {
-    #[schemars(description = "Include detailed information about each pipeline (state, duration, messages) (default: false)")]
+    #[schemars(
+        description = "Include detailed information about each pipeline (state, duration, messages) (default: false)"
+    )]
     pub include_details: Option<bool>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct ValidatePipelineParams {
-    #[schemars(description = "Pipeline description in gst-launch syntax to validate (e.g., 'filesrc location=video.mp4 ! decodebin ! autovideosink')")]
+    #[schemars(
+        description = "Pipeline description in gst-launch syntax to validate (e.g., 'filesrc location=video.mp4 ! decodebin ! autovideosink')"
+    )]
     pub pipeline_description: String,
 }
 
@@ -106,7 +132,7 @@ impl GStreamerHandler {
         let cache = DiscoveryCache::new();
         let pipeline_manager = PipelineManager::new(10); // Max 10 concurrent pipelines
         let tool_registry = Arc::new(ToolRegistry::new());
-        
+
         // Get enabled tools based on default configuration
         let enabled_tools = tool_registry.filter_tools(
             &config.operational_mode,
@@ -128,7 +154,7 @@ impl GStreamerHandler {
         let cache = DiscoveryCache::new();
         let pipeline_manager = PipelineManager::new(10); // Max 10 concurrent pipelines
         let tool_registry = Arc::new(ToolRegistry::new());
-        
+
         // Get enabled tools based on configuration
         let enabled_tools = tool_registry.filter_tools(
             &config.operational_mode,
@@ -145,13 +171,15 @@ impl GStreamerHandler {
             tool_router: Self::tool_router(),
         })
     }
-    
+
     /// Check if a tool is enabled based on current configuration
     async fn is_tool_enabled(&self, tool_name: &str) -> bool {
         self.enabled_tools.read().await.contains(tool_name)
     }
 
-    #[tool(description = "Lists all available GStreamer elements with optional filtering. Accepts name filter and category filter (both optional). Returns element names, descriptions, plugin sources, and rank values.")]
+    #[tool(
+        description = "Lists all available GStreamer elements with optional filtering. Accepts name filter and category filter (both optional). Returns element names, descriptions, plugin sources, and rank values."
+    )]
     async fn gst_list_elements(
         &self,
         Parameters(params): Parameters<ListElementsParams>,
@@ -164,7 +192,7 @@ impl GStreamerHandler {
                 None::<serde_json::Value>,
             ));
         }
-        
+
         let elements = if self.config.read().await.cache_enabled {
             self.cache.get_elements().await
         } else {
@@ -183,8 +211,7 @@ impl GStreamerHandler {
         // Apply category filter if provided
         if let Some(category) = params.category {
             let category_lower = category.to_lowercase();
-            filtered_elements
-                .retain(|e| e.classification.to_lowercase().contains(&category_lower));
+            filtered_elements.retain(|e| e.classification.to_lowercase().contains(&category_lower));
         }
 
         let output = if filtered_elements.is_empty() {
@@ -203,7 +230,9 @@ impl GStreamerHandler {
         Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
-    #[tool(description = "Retrieves detailed information about a specific GStreamer element. Accepts element name (required). Returns properties with types/defaults, pad templates, signals, and classification.")]
+    #[tool(
+        description = "Retrieves detailed information about a specific GStreamer element. Accepts element name (required). Returns properties with types/defaults, pad templates, signals, and classification."
+    )]
     async fn gst_inspect_element(
         &self,
         Parameters(params): Parameters<InspectElementParams>,
@@ -262,7 +291,9 @@ impl GStreamerHandler {
         Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
-    #[tool(description = "Lists all available GStreamer plugins. Accepts name filter (optional). Returns plugin names, versions, descriptions, licenses, and contained elements.")]
+    #[tool(
+        description = "Lists all available GStreamer plugins. Accepts name filter (optional). Returns plugin names, versions, descriptions, licenses, and contained elements."
+    )]
     async fn gst_list_plugins(
         &self,
         Parameters(params): Parameters<ListPluginsParams>,
@@ -292,10 +323,7 @@ impl GStreamerHandler {
                     plugin.name, plugin.version, plugin.description, plugin.license, plugin.source
                 ));
                 if !plugin.elements.is_empty() {
-                    output.push_str(&format!(
-                        "  Elements: {}\n",
-                        plugin.elements.join(", ")
-                    ));
+                    output.push_str(&format!("  Elements: {}\n", plugin.elements.join(", ")));
                 }
                 output.push('\n');
             }
@@ -305,7 +333,9 @@ impl GStreamerHandler {
         Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
-    #[tool(description = "Searches for GStreamer elements by keyword. Accepts search query (required). Returns relevance-ranked results matching element names, descriptions, and classifications.")]
+    #[tool(
+        description = "Searches for GStreamer elements by keyword. Accepts search query (required). Returns relevance-ranked results matching element names, descriptions, and classifications."
+    )]
     async fn gst_search_elements(
         &self,
         Parameters(params): Parameters<SearchElementsParams>,
@@ -327,10 +357,7 @@ impl GStreamerHandler {
             for element in results {
                 output.push_str(&format!(
                     "- {} ({})\n  Plugin: {}, Classification: {}\n",
-                    element.name,
-                    element.description,
-                    element.plugin_name,
-                    element.classification
+                    element.name, element.description, element.plugin_name, element.classification
                 ));
             }
             output
@@ -339,7 +366,9 @@ impl GStreamerHandler {
         Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
-    #[tool(description = "Creates and launches a GStreamer pipeline from description. Accepts gst-launch syntax, auto-play flag (default: true), and custom ID (optional). Returns pipeline ID and current state.")]
+    #[tool(
+        description = "Creates and launches a GStreamer pipeline from description. Accepts gst-launch syntax, auto-play flag (default: true), and custom ID (optional). Returns pipeline ID and current state."
+    )]
     async fn gst_launch_pipeline(
         &self,
         Parameters(params): Parameters<LaunchPipelineParams>,
@@ -352,19 +381,21 @@ impl GStreamerHandler {
                 None::<serde_json::Value>,
             ));
         }
-        
+
         // Create the pipeline
-        let pipeline_id = self.pipeline_manager
+        let pipeline_id = self
+            .pipeline_manager
             .create_pipeline(&params.pipeline_description, params.pipeline_id)
             .map_err(Into::<McpError>::into)?;
-        
+
         // Auto-play if requested (default is true)
         let auto_play = params.auto_play.unwrap_or(true);
         if auto_play {
-            let state = self.pipeline_manager
+            let state = self
+                .pipeline_manager
                 .set_pipeline_state(&pipeline_id, gst::State::Playing)
                 .map_err(Into::<McpError>::into)?;
-            
+
             let output = format!(
                 "Pipeline '{}' launched successfully.\nState: {:?}\nDescription: {}",
                 pipeline_id, state, params.pipeline_description
@@ -379,7 +410,9 @@ impl GStreamerHandler {
         }
     }
 
-    #[tool(description = "Changes the state of an active pipeline. Accepts pipeline ID and target state (null/ready/paused/playing). Returns new state and transition success status.")]
+    #[tool(
+        description = "Changes the state of an active pipeline. Accepts pipeline ID and target state (null/ready/paused/playing). Returns new state and transition success status."
+    )]
     async fn gst_set_pipeline_state(
         &self,
         Parameters(params): Parameters<SetPipelineStateParams>,
@@ -392,23 +425,30 @@ impl GStreamerHandler {
                 None::<serde_json::Value>,
             ));
         }
-        
+
         let state = match params.state.to_lowercase().as_str() {
             "null" => gst::State::Null,
             "ready" => gst::State::Ready,
             "paused" => gst::State::Paused,
             "playing" => gst::State::Playing,
-            _ => return Err(McpError {
-                code: rmcp::model::ErrorCode(-32003),
-                message: format!("Invalid state '{}'. Must be one of: null, ready, paused, playing", params.state).into(),
-                data: None,
-            }),
+            _ => {
+                return Err(McpError {
+                    code: rmcp::model::ErrorCode(-32003),
+                    message: format!(
+                        "Invalid state '{}'. Must be one of: null, ready, paused, playing",
+                        params.state
+                    )
+                    .into(),
+                    data: None,
+                })
+            }
         };
-        
-        let current_state = self.pipeline_manager
+
+        let current_state = self
+            .pipeline_manager
             .set_pipeline_state(&params.pipeline_id, state)
             .map_err(Into::<McpError>::into)?;
-        
+
         let output = format!(
             "Pipeline '{}' state changed to {:?}",
             params.pipeline_id, current_state
@@ -416,81 +456,103 @@ impl GStreamerHandler {
         Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
-    #[tool(description = "Retrieves current status of a pipeline. Accepts pipeline ID and include_messages flag (optional). Returns state, position, duration, and recent bus messages.")]
+    #[tool(
+        description = "Retrieves current status of a pipeline. Accepts pipeline ID and include_messages flag (optional). Returns state, position, duration, and recent bus messages."
+    )]
     async fn gst_get_pipeline_status(
         &self,
         Parameters(params): Parameters<GetPipelineStatusParams>,
     ) -> Result<CallToolResult, McpError> {
-        let status = self.pipeline_manager
+        let status = self
+            .pipeline_manager
             .get_pipeline_status(&params.pipeline_id)
             .map_err(Into::<McpError>::into)?;
-        
+
         let mut output = format!(
             "Pipeline: {}\nDescription: {}\nState: {}\n",
             status.id, status.description, status.state
         );
-        
+
         if let Some(pending) = status.pending_state {
             output.push_str(&format!("Pending State: {}\n", pending));
         }
-        
+
         if status.position >= 0 {
             output.push_str(&format!("Position: {} ns\n", status.position));
         }
         if status.duration >= 0 {
             output.push_str(&format!("Duration: {} ns\n", status.duration));
         }
-        
-        output.push_str(&format!("Errors: {}, Warnings: {}\n", status.error_count, status.warning_count));
-        output.push_str(&format!("Created: {}\nLast State Change: {}\n", 
-            status.created_at, status.last_state_change));
-        
+
+        output.push_str(&format!(
+            "Errors: {}, Warnings: {}\n",
+            status.error_count, status.warning_count
+        ));
+        output.push_str(&format!(
+            "Created: {}\nLast State Change: {}\n",
+            status.created_at, status.last_state_change
+        ));
+
         // Include messages if requested
         if params.include_messages.unwrap_or(false) {
-            let messages = self.pipeline_manager.get_bus_messages(&params.pipeline_id, 10);
+            let messages = self
+                .pipeline_manager
+                .get_bus_messages(&params.pipeline_id, 10);
             if !messages.is_empty() {
                 output.push_str("\nRecent Messages:\n");
                 for msg in messages {
-                    output.push_str(&format!("  [{}] {}: {}\n", 
-                        msg.timestamp, msg.message_type, msg.message));
+                    output.push_str(&format!(
+                        "  [{}] {}: {}\n",
+                        msg.timestamp, msg.message_type, msg.message
+                    ));
                 }
             }
         }
-        
+
         Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
-    #[tool(description = "Stops and releases resources for a pipeline. Accepts pipeline ID and force flag (optional). Returns cleanup status.")]
+    #[tool(
+        description = "Stops and releases resources for a pipeline. Accepts pipeline ID and force flag (optional). Returns cleanup status."
+    )]
     async fn gst_stop_pipeline(
         &self,
         Parameters(params): Parameters<StopPipelineParams>,
     ) -> Result<CallToolResult, McpError> {
         // First set to NULL state
-        let _ = self.pipeline_manager
+        let _ = self
+            .pipeline_manager
             .set_pipeline_state(&params.pipeline_id, gst::State::Null);
-        
+
         // Then remove the pipeline
         self.pipeline_manager
             .remove_pipeline(&params.pipeline_id)
             .map_err(Into::<McpError>::into)?;
-        
-        let output = format!("Pipeline '{}' stopped and removed successfully", params.pipeline_id);
+
+        let output = format!(
+            "Pipeline '{}' stopped and removed successfully",
+            params.pipeline_id
+        );
         Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
-    #[tool(description = "Lists all currently active pipelines. Accepts include_details flag (optional). Returns pipeline IDs, descriptions, states, and creation times.")]
+    #[tool(
+        description = "Lists all currently active pipelines. Accepts include_details flag (optional). Returns pipeline IDs, descriptions, states, and creation times."
+    )]
     async fn gst_list_pipelines(
         &self,
         Parameters(params): Parameters<ListGstPipelinesParams>,
     ) -> Result<CallToolResult, McpError> {
         let pipelines = self.pipeline_manager.list_pipelines();
-        
+
         if pipelines.is_empty() {
-            return Ok(CallToolResult::success(vec![Content::text("No active pipelines".to_string())]));
+            return Ok(CallToolResult::success(vec![Content::text(
+                "No active pipelines".to_string(),
+            )]));
         }
-        
+
         let mut output = format!("Active pipelines: {}\n\n", pipelines.len());
-        
+
         for pipeline in pipelines {
             if params.include_details.unwrap_or(false) {
                 output.push_str(&format!(
@@ -502,11 +564,13 @@ impl GStreamerHandler {
                 output.push_str(&format!("- {} ({})\n", pipeline.id, pipeline.state));
             }
         }
-        
+
         Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
-    #[tool(description = "Validates pipeline description syntax without launching. Accepts gst-launch syntax description. Returns validation status and list of elements that would be created.")]
+    #[tool(
+        description = "Validates pipeline description syntax without launching. Accepts gst-launch syntax description. Returns validation status and list of elements that would be created."
+    )]
     async fn gst_validate_pipeline(
         &self,
         Parameters(params): Parameters<ValidatePipelineParams>,

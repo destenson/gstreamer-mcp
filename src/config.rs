@@ -6,19 +6,19 @@ use std::path::Path;
 pub struct Configuration {
     #[serde(default = "default_cache_enabled")]
     pub cache_enabled: bool,
-    
+
     #[serde(default = "default_cache_ttl")]
     pub cache_ttl_seconds: u64,
-    
+
     #[serde(default = "default_max_results")]
     pub max_search_results: usize,
-    
+
     #[serde(default)]
     pub operational_mode: OperationalMode,
-    
+
     #[serde(default)]
     pub included_tools: Option<Vec<String>>,
-    
+
     #[serde(default)]
     pub excluded_tools: Option<Vec<String>>,
 }
@@ -49,31 +49,31 @@ impl Configuration {
                 self.cache_enabled = enabled;
             }
         }
-        
+
         if let Ok(val) = std::env::var("GSTREAMER_MCP_CACHE_TTL") {
             if let Ok(ttl) = val.parse::<u64>() {
                 self.cache_ttl_seconds = ttl;
             }
         }
-        
+
         if let Ok(val) = std::env::var("GSTREAMER_MCP_MAX_RESULTS") {
             if let Ok(max) = val.parse::<usize>() {
                 self.max_search_results = max;
             }
         }
     }
-    
+
     /// Merge CLI arguments into configuration
     /// Priority: CLI args > env vars > config file > defaults
     pub fn merge_cli_args(&mut self, cli_config: &ParsedConfig) {
         // Override operational mode
         self.operational_mode = cli_config.mode.clone();
-        
+
         // Override tool lists if provided
         if cli_config.included_tools.is_some() {
             self.included_tools = cli_config.included_tools.clone();
         }
-        
+
         if cli_config.excluded_tools.is_some() {
             self.excluded_tools = cli_config.excluded_tools.clone();
         }

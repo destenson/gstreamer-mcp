@@ -48,7 +48,7 @@ impl From<GStreamerMcpError> for McpError {
             GStreamerMcpError::PipelineError(_) => -32007,
             _ => -32000,
         };
-        
+
         McpError {
             code: rmcp::model::ErrorCode(code),
             message: err.to_string().into(),

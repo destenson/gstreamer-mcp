@@ -62,7 +62,7 @@ impl PipelineManager {
     ) -> McpResult<String> {
         // Ensure GStreamer is initialized
         ensure_gstreamer_initialized()?;
-        
+
         // Check pipeline limit
         {
             let pipelines = self.pipelines.read();
@@ -75,12 +75,13 @@ impl PipelineManager {
         }
 
         // Parse the pipeline
-        let element = gst::parse::launch(description)
-            .map_err(|e| GStreamerMcpError::PipelineError(format!("Failed to parse pipeline: {}", e)))?;
+        let element = gst::parse::launch(description).map_err(|e| {
+            GStreamerMcpError::PipelineError(format!("Failed to parse pipeline: {}", e))
+        })?;
 
-        let pipeline = element
-            .downcast::<gst::Pipeline>()
-            .map_err(|_| GStreamerMcpError::PipelineError("Failed to cast to Pipeline".to_string()))?;
+        let pipeline = element.downcast::<gst::Pipeline>().map_err(|_| {
+            GStreamerMcpError::PipelineError("Failed to cast to Pipeline".to_string())
+        })?;
 
         // Generate or use custom ID
         let id = custom_id.unwrap_or_else(|| format!("pipeline-{}", Uuid::new_v4()));
@@ -127,7 +128,7 @@ impl PipelineManager {
             )))
         }
     }
-    
+
     pub fn stop_pipeline(&self, id: &str) -> McpResult<()> {
         // First set the pipeline to null state
         self.set_pipeline_state(id, gst::State::Null)?;
@@ -147,23 +148,25 @@ impl PipelineManager {
     }
 
     pub fn set_pipeline_state(&self, id: &str, state: gst::State) -> McpResult<gst::State> {
-        let pipeline = self
-            .get_pipeline(id)
-            .ok_or_else(|| GStreamerMcpError::PipelineError(format!("Pipeline '{}' not found", id)))?;
+        let pipeline = self.get_pipeline(id).ok_or_else(|| {
+            GStreamerMcpError::PipelineError(format!("Pipeline '{}' not found", id))
+        })?;
 
         let mut instance = pipeline.write();
-        
+
         // Set the state
         let state_change_result = instance.pipeline.set_state(state);
-        
+
         match state_change_result {
             Ok(gst::StateChangeSuccess::Success) | Ok(gst::StateChangeSuccess::Async) => {
                 // Update info
                 instance.info.state = format!("{:?}", state);
                 instance.info.last_state_change = chrono::Utc::now();
-                
+
                 // Get the actual current state
-                let (_, current_state, _) = instance.pipeline.state(Some(gst::ClockTime::from_seconds(1)));
+                let (_, current_state, _) = instance
+                    .pipeline
+                    .state(Some(gst::ClockTime::from_seconds(1)));
                 Ok(current_state)
             }
             Ok(gst::StateChangeSuccess::NoPreroll) => {
@@ -172,31 +175,35 @@ impl PipelineManager {
                 instance.info.last_state_change = chrono::Utc::now();
                 Ok(state)
             }
-            Err(gst::StateChangeError) => {
-                Err(GStreamerMcpError::PipelineError(format!(
-                    "Failed to change pipeline state to {:?}",
-                    state
-                )))
-            }
+            Err(gst::StateChangeError) => Err(GStreamerMcpError::PipelineError(format!(
+                "Failed to change pipeline state to {:?}",
+                state
+            ))),
         }
     }
 
     pub fn get_pipeline_status(&self, id: &str) -> McpResult<PipelineStatus> {
-        let pipeline = self
-            .get_pipeline(id)
-            .ok_or_else(|| GStreamerMcpError::PipelineError(format!("Pipeline '{}' not found", id)))?;
+        let pipeline = self.get_pipeline(id).ok_or_else(|| {
+            GStreamerMcpError::PipelineError(format!("Pipeline '{}' not found", id))
+        })?;
 
         let instance = pipeline.read();
-        
+
         // Get current state
-        let (_, current_state, pending_state) = instance.pipeline.state(Some(gst::ClockTime::from_seconds(0)));
-        
+        let (_, current_state, pending_state) = instance
+            .pipeline
+            .state(Some(gst::ClockTime::from_seconds(0)));
+
         // Try to get position and duration
-        let position = instance.pipeline.query_position::<gst::ClockTime>()
+        let position = instance
+            .pipeline
+            .query_position::<gst::ClockTime>()
             .map(|t| t.nseconds() as i64)
             .unwrap_or(-1);
-            
-        let duration = instance.pipeline.query_duration::<gst::ClockTime>()
+
+        let duration = instance
+            .pipeline
+            .query_duration::<gst::ClockTime>()
             .map(|t| t.nseconds() as i64)
             .unwrap_or(-1);
 
@@ -221,14 +228,14 @@ impl PipelineManager {
     pub fn add_bus_message(&self, id: &str, message: BusMessage) {
         if let Some(pipeline) = self.get_pipeline(id) {
             let mut instance = pipeline.write();
-            
+
             // Update error/warning counts
             match message.message_type.as_str() {
                 "Error" => instance.info.error_count += 1,
                 "Warning" => instance.info.warning_count += 1,
                 _ => {}
             }
-            
+
             // Keep last 100 messages
             if instance.bus_messages.len() >= 100 {
                 instance.bus_messages.remove(0);
@@ -269,7 +276,7 @@ pub struct PipelineStatus {
 pub fn validate_pipeline_description(description: &str) -> McpResult<Vec<String>> {
     // Ensure GStreamer is initialized
     ensure_gstreamer_initialized()?;
-    
+
     // Try to parse the pipeline
     match gst::parse::launch(description) {
         Ok(element) => {
@@ -277,7 +284,7 @@ pub fn validate_pipeline_description(description: &str) -> McpResult<Vec<String>
             // This is a simple parser that extracts element names
             let mut elements = Vec::new();
             let parts: Vec<&str> = description.split('!').collect();
-            
+
             for part in parts {
                 // Extract the element name (first word before any properties)
                 if let Some(element_name) = part.trim().split_whitespace().next() {
@@ -288,12 +295,12 @@ pub fn validate_pipeline_description(description: &str) -> McpResult<Vec<String>
                     }
                 }
             }
-            
+
             // Cleanup
             if let Ok(pipeline) = element.downcast::<gst::Pipeline>() {
                 let _ = pipeline.set_state(gst::State::Null);
             }
-            
+
             Ok(elements)
         }
         Err(e) => Err(GStreamerMcpError::PipelineError(format!(

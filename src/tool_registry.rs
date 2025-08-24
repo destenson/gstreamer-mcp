@@ -36,7 +36,7 @@ impl ToolMetadata {
             modes,
         }
     }
-    
+
     /// Check if this tool is available in the given mode
     pub fn is_available_in_mode(&self, mode: &OperationalMode) -> bool {
         mode == &OperationalMode::All || self.modes.contains(mode)
@@ -52,7 +52,7 @@ impl ToolRegistry {
     /// Create and initialize the tool registry with all known tools
     pub fn new() -> Self {
         let mut tools = HashMap::new();
-        
+
         // Element Discovery Tools (PRP-01)
         tools.insert(
             "gst_list_elements".to_string(),
@@ -63,7 +63,7 @@ impl ToolRegistry {
                 vec![OperationalMode::All, OperationalMode::Live, OperationalMode::Dev, OperationalMode::Discovery],
             ),
         );
-        
+
         tools.insert(
             "gst_inspect_element".to_string(),
             ToolMetadata::new(
@@ -73,7 +73,7 @@ impl ToolRegistry {
                 vec![OperationalMode::All, OperationalMode::Live, OperationalMode::Dev, OperationalMode::Discovery],
             ),
         );
-        
+
         tools.insert(
             "gst_list_plugins".to_string(),
             ToolMetadata::new(
@@ -83,7 +83,7 @@ impl ToolRegistry {
                 vec![OperationalMode::All, OperationalMode::Live, OperationalMode::Dev, OperationalMode::Discovery],
             ),
         );
-        
+
         tools.insert(
             "gst_search_elements".to_string(),
             ToolMetadata::new(
@@ -93,7 +93,7 @@ impl ToolRegistry {
                 vec![OperationalMode::All, OperationalMode::Live, OperationalMode::Dev, OperationalMode::Discovery],
             ),
         );
-        
+
         // Pipeline Management Tools (PRP-02)
         tools.insert(
             "gst_launch_pipeline".to_string(),
@@ -104,7 +104,7 @@ impl ToolRegistry {
                 vec![OperationalMode::All, OperationalMode::Live],
             ),
         );
-        
+
         tools.insert(
             "gst_set_pipeline_state".to_string(),
             ToolMetadata::new(
@@ -114,7 +114,7 @@ impl ToolRegistry {
                 vec![OperationalMode::All, OperationalMode::Live],
             ),
         );
-        
+
         tools.insert(
             "gst_get_pipeline_status".to_string(),
             ToolMetadata::new(
@@ -124,7 +124,7 @@ impl ToolRegistry {
                 vec![OperationalMode::All, OperationalMode::Live, OperationalMode::Discovery],
             ),
         );
-        
+
         tools.insert(
             "gst_stop_pipeline".to_string(),
             ToolMetadata::new(
@@ -134,7 +134,7 @@ impl ToolRegistry {
                 vec![OperationalMode::All, OperationalMode::Live],
             ),
         );
-        
+
         tools.insert(
             "gst_list_pipelines".to_string(),
             ToolMetadata::new(
@@ -144,7 +144,7 @@ impl ToolRegistry {
                 vec![OperationalMode::All, OperationalMode::Live, OperationalMode::Discovery],
             ),
         );
-        
+
         tools.insert(
             "gst_validate_pipeline".to_string(),
             ToolMetadata::new(
@@ -154,13 +154,13 @@ impl ToolRegistry {
                 vec![OperationalMode::All, OperationalMode::Live, OperationalMode::Dev, OperationalMode::Discovery],
             ),
         );
-        
+
         // Future tools (PRP-03, PRP-04, PRP-05, PRP-06) would be added here
         // For now, we're only including the implemented tools
-        
+
         Self { tools }
     }
-    
+
     /// Get all tools available in a specific mode
     pub fn get_tools_for_mode(&self, mode: &OperationalMode) -> Vec<String> {
         self.tools
@@ -169,7 +169,7 @@ impl ToolRegistry {
             .map(|tool| tool.name.clone())
             .collect()
     }
-    
+
     /// Filter tools based on mode and include/exclude lists
     pub fn filter_tools(
         &self,
@@ -179,33 +179,33 @@ impl ToolRegistry {
     ) -> HashSet<String> {
         // Start with tools available in the mode
         let mut available: HashSet<String> = self.get_tools_for_mode(mode).into_iter().collect();
-        
+
         // If specific tools are included, only use those (if they're available in the mode)
         if let Some(included_tools) = included {
             let included_set: HashSet<String> = included_tools.iter().cloned().collect();
             available = available.intersection(&included_set).cloned().collect();
         }
-        
+
         // Remove excluded tools
         if let Some(excluded_tools) = excluded {
             for tool in excluded_tools {
                 available.remove(tool);
             }
         }
-        
+
         available
     }
-    
+
     /// Check if a specific tool is registered
     pub fn has_tool(&self, name: &str) -> bool {
         self.tools.contains_key(name)
     }
-    
+
     /// Get metadata for a specific tool
     pub fn get_tool(&self, name: &str) -> Option<&ToolMetadata> {
         self.tools.get(name)
     }
-    
+
     /// Get all registered tools
     pub fn all_tools(&self) -> Vec<String> {
         self.tools.keys().cloned().collect()
@@ -229,39 +229,42 @@ mod tests {
         assert!(registry.has_tool("gst_launch_pipeline"));
         assert!(!registry.has_tool("nonexistent_tool"));
     }
-    
+
     #[test]
     fn test_mode_filtering() {
         let registry = ToolRegistry::new();
-        
+
         // Discovery mode should have read-only tools
         let discovery_tools = registry.get_tools_for_mode(&OperationalMode::Discovery);
         assert!(discovery_tools.contains(&"gst_list_elements".to_string()));
         assert!(discovery_tools.contains(&"gst_validate_pipeline".to_string()));
         assert!(!discovery_tools.contains(&"gst_launch_pipeline".to_string()));
         assert!(!discovery_tools.contains(&"gst_stop_pipeline".to_string()));
-        
+
         // Live mode should have pipeline control tools
         let live_tools = registry.get_tools_for_mode(&OperationalMode::Live);
         assert!(live_tools.contains(&"gst_launch_pipeline".to_string()));
         assert!(live_tools.contains(&"gst_stop_pipeline".to_string()));
-        
+
         // All mode should have everything
         let all_tools = registry.get_tools_for_mode(&OperationalMode::All);
         assert_eq!(all_tools.len(), 10); // We have 10 implemented tools
     }
-    
+
     #[test]
     fn test_tool_filtering_with_includes_excludes() {
         let registry = ToolRegistry::new();
-        
+
         // Test with included tools
-        let included = vec!["gst_list_elements".to_string(), "gst_list_plugins".to_string()];
+        let included = vec![
+            "gst_list_elements".to_string(),
+            "gst_list_plugins".to_string(),
+        ];
         let filtered = registry.filter_tools(&OperationalMode::All, Some(&included), None);
         assert_eq!(filtered.len(), 2);
         assert!(filtered.contains("gst_list_elements"));
         assert!(filtered.contains("gst_list_plugins"));
-        
+
         // Test with excluded tools
         let excluded = vec!["gst_launch_pipeline".to_string()];
         let filtered = registry.filter_tools(&OperationalMode::Live, None, Some(&excluded));

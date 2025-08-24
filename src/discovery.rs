@@ -108,13 +108,13 @@ impl DiscoveryCache {
 
 pub fn discover_all_elements() -> Result<Vec<ElementInfo>> {
     ensure_gstreamer_initialized()?;
-    
+
     let registry = gst::Registry::get();
     let mut elements = Vec::new();
 
     for plugin in registry.plugins() {
         let plugin_name = plugin.plugin_name().to_string();
-        
+
         for feature in registry.features_by_plugin(&plugin_name) {
             if let Ok(factory) = feature.downcast::<gst::ElementFactory>() {
                 elements.push(ElementInfo {
@@ -134,13 +134,13 @@ pub fn discover_all_elements() -> Result<Vec<ElementInfo>> {
 
 pub fn discover_all_plugins() -> Result<Vec<PluginInfo>> {
     ensure_gstreamer_initialized()?;
-    
+
     let registry = gst::Registry::get();
     let mut plugins = Vec::new();
 
     for plugin in registry.plugins() {
         let plugin_name = plugin.plugin_name().to_string();
-        
+
         let mut element_names = Vec::new();
         for feature in registry.features_by_plugin(&plugin_name) {
             if let Ok(factory) = feature.downcast::<gst::ElementFactory>() {
@@ -165,7 +165,7 @@ pub fn discover_all_plugins() -> Result<Vec<PluginInfo>> {
 
 pub fn inspect_element(element_name: &str) -> Result<ElementDetailedInfo> {
     ensure_gstreamer_initialized()?;
-    
+
     let registry = gst::Registry::get();
     let factory = registry
         .find_feature(element_name, gst::ElementFactory::static_type())
@@ -226,10 +226,10 @@ fn get_element_properties(element: &gst::Element) -> Result<Vec<PropertyInfo>> {
         let name = prop.name().to_string();
         let type_name = prop.value_type().name().to_string();
         let description = prop.blurb().unwrap_or("").to_string();
-        
+
         let mut flags = Vec::new();
         let prop_flags = prop.flags();
-        
+
         if prop_flags.contains(gstreamer::glib::ParamFlags::READABLE) {
             flags.push("readable".to_string());
         }
@@ -264,11 +264,11 @@ fn get_element_properties(element: &gst::Element) -> Result<Vec<PropertyInfo>> {
 
 fn get_pad_templates(factory: &gst::ElementFactory) -> Vec<PadTemplateInfo> {
     let mut templates = Vec::new();
-    
+
     for pad_template in factory.static_pad_templates() {
         let caps = pad_template.caps();
         let caps_str = caps.to_string();
-        
+
         templates.push(PadTemplateInfo {
             name: pad_template.name_template().to_string(),
             direction: format!("{:?}", pad_template.direction()),
@@ -276,23 +276,23 @@ fn get_pad_templates(factory: &gst::ElementFactory) -> Vec<PadTemplateInfo> {
             caps: caps_str,
         });
     }
-    
+
     templates
 }
 
 pub fn search_elements(query: &str, max_results: usize) -> Result<Vec<ElementInfo>> {
     let all_elements = discover_all_elements()?;
     let query_lower = query.to_lowercase();
-    
+
     let mut matches: Vec<(ElementInfo, i32)> = all_elements
         .into_iter()
         .filter_map(|element| {
             let name_lower = element.name.to_lowercase();
             let desc_lower = element.description.to_lowercase();
             let class_lower = element.classification.to_lowercase();
-            
+
             let mut score = 0;
-            
+
             // Exact name match gets highest score
             if name_lower == query_lower {
                 score += 100;
@@ -301,17 +301,17 @@ pub fn search_elements(query: &str, max_results: usize) -> Result<Vec<ElementInf
             else if name_lower.contains(&query_lower) {
                 score += 50;
             }
-            
+
             // Description contains query
             if desc_lower.contains(&query_lower) {
                 score += 20;
             }
-            
+
             // Classification contains query
             if class_lower.contains(&query_lower) {
                 score += 10;
             }
-            
+
             if score > 0 {
                 Some((element, score))
             } else {
@@ -319,10 +319,10 @@ pub fn search_elements(query: &str, max_results: usize) -> Result<Vec<ElementInf
             }
         })
         .collect();
-    
+
     // Sort by score (highest first)
     matches.sort_by(|a, b| b.1.cmp(&a.1));
-    
+
     // Take only the requested number of results
     Ok(matches
         .into_iter()

@@ -9,29 +9,40 @@ use std::path::PathBuf;
 #[command(version)]
 pub struct Cli {
     /// Operational mode for the server
-    #[arg(short, long, value_enum, default_value = "all", env = "GSTREAMER_MCP_MODE")]
+    #[arg(
+        short,
+        long,
+        value_enum,
+        default_value = "all",
+        env = "GSTREAMER_MCP_MODE"
+    )]
     pub mode: OperationalMode,
-    
+
     /// Run in REPL mode for interactive testing
     #[arg(short, long)]
     pub repl: bool,
-    
+
     /// Specific tools to enable (comma-separated)
     #[arg(long, value_delimiter = ',', env = "GSTREAMER_MCP_TOOLS")]
     pub tools: Option<Vec<String>>,
-    
+
     /// Tools to exclude (comma-separated)
-    #[arg(long, value_delimiter = ',', conflicts_with = "tools", env = "GSTREAMER_MCP_EXCLUDE_TOOLS")]
+    #[arg(
+        long,
+        value_delimiter = ',',
+        conflicts_with = "tools",
+        env = "GSTREAMER_MCP_EXCLUDE_TOOLS"
+    )]
     pub exclude_tools: Option<Vec<String>>,
-    
+
     /// Configuration file path
     #[arg(short, long)]
     pub config: Option<PathBuf>,
-    
+
     /// Verbose output (-v, -vv, -vvv)
     #[arg(short, long, action = clap::ArgAction::Count)]
     pub verbose: u8,
-    
+
     /// Disable colored output
     #[arg(long)]
     pub no_color: bool,
@@ -72,7 +83,7 @@ impl Cli {
     /// Parse command-line arguments and return configuration
     pub fn parse_args() -> ParsedConfig {
         let cli = Cli::parse();
-        
+
         ParsedConfig {
             mode: cli.mode,
             repl: cli.repl,
@@ -83,12 +94,12 @@ impl Cli {
             no_color: cli.no_color,
         }
     }
-    
+
     /// Parse with environment variable fallback
     pub fn parse_with_env() -> ParsedConfig {
         // First try CLI args, which will also pick up env vars via clap's env feature
         let config = Self::parse_args();
-        
+
         // Additional env var handling if needed
         config
     }
@@ -102,13 +113,13 @@ mod tests {
     fn test_default_mode() {
         assert_eq!(OperationalMode::default(), OperationalMode::All);
     }
-    
+
     #[test]
     fn test_mode_serialization() {
         let mode = OperationalMode::Live;
         let serialized = serde_json::to_string(&mode).unwrap();
         assert_eq!(serialized, "\"live\"");
-        
+
         let deserialized: OperationalMode = serde_json::from_str(&serialized).unwrap();
         assert_eq!(deserialized, OperationalMode::Live);
     }
