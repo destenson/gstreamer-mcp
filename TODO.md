@@ -5,7 +5,19 @@ Initial project setup phase - PRPs (Project Requirement and Planning documents) 
 
 ## High Priority 🔴
 
-### 1. Core MCP Server Implementation
+### 1. Command-Line Interface and Modes (PRP-00)
+- [ ] **Implement CLI argument parsing**
+  - Add clap dependency for command-line parsing
+  - Create cli.rs module with mode selection
+  - Support --mode flag (live, dev, discovery, all)
+  - Add --tools and --exclude-tools options
+  
+- [ ] **Create Tool Registry System**
+  - Implement tool metadata and categorization
+  - Add mode-based tool filtering
+  - Create runtime enable/disable mechanism
+
+### 2. Core MCP Server Implementation
 - [ ] **Initialize Rust project structure** (PRP-01)
   - Set up Cargo.toml with rmcp and gstreamer dependencies
   - Create basic module structure (main.rs, lib.rs, handler.rs, etc.)
@@ -15,8 +27,9 @@ Initial project setup phase - PRPs (Project Requirement and Planning documents) 
   - Set up stdio transport following cargo-mcp pattern
   - Implement ServerHandler trait
   - Add server metadata and initialization
+  - Integrate with tool registry for mode-based filtering
 
-### 2. GStreamer Integration
+### 3. GStreamer Integration
 - [ ] **Initialize GStreamer context** (PRP-01)
   - Set up GStreamer initialization in discovery module
   - Handle GStreamer cleanup on shutdown
@@ -115,11 +128,12 @@ Initial project setup phase - PRPs (Project Requirement and Planning documents) 
 - gst-plugins-rs - Reference for plugin patterns
 
 ## Notes
-- PRPs are complete and located in `/PRPs/` directory
+- PRPs are complete and located in `/PRPs/` directory (including PRP-00 for CLI modes)
 - Following patterns from cargo-mcp implementation
 - GStreamer must be installed (minimum version 1.14)
 - All tools should follow consistent naming convention
 - Focus on read-only operations before implementing pipeline control
+- Different operational modes (live, dev, discovery) provide targeted tool sets for specific use cases
 
 ---
 *Last Updated: Project initialization phase*
