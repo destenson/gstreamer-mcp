@@ -3,10 +3,11 @@ use crate::discovery::{
     discover_all_elements, discover_all_plugins, inspect_element, search_elements, DiscoveryCache,
 };
 use crate::pipeline::{PipelineManager, validate_pipeline_description};
+use crate::tool_registry::ToolRegistry;
 use gstreamer as gst;
 use rmcp::{
     handler::server::{router::tool::ToolRouter, tool::Parameters},
-    model::*,
+    model::{*, ErrorCode},
     schemars, schemars::JsonSchema,
     tool, tool_handler, tool_router,
     ErrorData as McpError, ServerHandler,
@@ -93,6 +94,8 @@ pub struct GStreamerHandler {
     pub config: Arc<RwLock<Configuration>>,
     pub cache: Arc<DiscoveryCache>,
     pub pipeline_manager: Arc<PipelineManager>,
+    pub tool_registry: Arc<ToolRegistry>,
+    pub enabled_tools: Arc<RwLock<std::collections::HashSet<String>>>,
     tool_router: ToolRouter<GStreamerHandler>,
 }
 
@@ -102,11 +105,21 @@ impl GStreamerHandler {
         let config = Configuration::default();
         let cache = DiscoveryCache::new();
         let pipeline_manager = PipelineManager::new(10); // Max 10 concurrent pipelines
+        let tool_registry = Arc::new(ToolRegistry::new());
+        
+        // Get enabled tools based on default configuration
+        let enabled_tools = tool_registry.filter_tools(
+            &config.operational_mode,
+            config.included_tools.as_deref(),
+            config.excluded_tools.as_deref(),
+        );
 
         Ok(Self {
             config: Arc::new(RwLock::new(config)),
             cache: Arc::new(cache),
             pipeline_manager: Arc::new(pipeline_manager),
+            tool_registry,
+            enabled_tools: Arc::new(RwLock::new(enabled_tools)),
             tool_router: Self::tool_router(),
         })
     }
@@ -114,13 +127,28 @@ impl GStreamerHandler {
     pub async fn with_config(config: Configuration) -> crate::Result<Self> {
         let cache = DiscoveryCache::new();
         let pipeline_manager = PipelineManager::new(10); // Max 10 concurrent pipelines
+        let tool_registry = Arc::new(ToolRegistry::new());
+        
+        // Get enabled tools based on configuration
+        let enabled_tools = tool_registry.filter_tools(
+            &config.operational_mode,
+            config.included_tools.as_deref(),
+            config.excluded_tools.as_deref(),
+        );
 
         Ok(Self {
             config: Arc::new(RwLock::new(config)),
             cache: Arc::new(cache),
             pipeline_manager: Arc::new(pipeline_manager),
+            tool_registry,
+            enabled_tools: Arc::new(RwLock::new(enabled_tools)),
             tool_router: Self::tool_router(),
         })
+    }
+    
+    /// Check if a tool is enabled based on current configuration
+    async fn is_tool_enabled(&self, tool_name: &str) -> bool {
+        self.enabled_tools.read().await.contains(tool_name)
     }
 
     #[tool(description = "List all available GStreamer elements")]
@@ -128,6 +156,15 @@ impl GStreamerHandler {
         &self,
         Parameters(params): Parameters<ListElementsParams>,
     ) -> Result<CallToolResult, McpError> {
+        // Check if tool is enabled
+        if !self.is_tool_enabled("gst_list_elements").await {
+            return Err(McpError::new(
+                ErrorCode::METHOD_NOT_FOUND,
+                format!("Tool 'gst_list_elements' is not available in the current mode"),
+                None::<serde_json::Value>,
+            ));
+        }
+        
         let elements = if self.config.read().await.cache_enabled {
             self.cache.get_elements().await
         } else {
@@ -307,6 +344,15 @@ impl GStreamerHandler {
         &self,
         Parameters(params): Parameters<LaunchPipelineParams>,
     ) -> Result<CallToolResult, McpError> {
+        // Check if tool is enabled
+        if !self.is_tool_enabled("gst_launch_pipeline").await {
+            return Err(McpError::new(
+                ErrorCode::METHOD_NOT_FOUND,
+                format!("Tool 'gst_launch_pipeline' is not available in the current mode"),
+                None::<serde_json::Value>,
+            ));
+        }
+        
         // Create the pipeline
         let pipeline_id = self.pipeline_manager
             .create_pipeline(&params.pipeline_description, params.pipeline_id)
@@ -338,6 +384,15 @@ impl GStreamerHandler {
         &self,
         Parameters(params): Parameters<SetPipelineStateParams>,
     ) -> Result<CallToolResult, McpError> {
+        // Check if tool is enabled
+        if !self.is_tool_enabled("gst_set_pipeline_state").await {
+            return Err(McpError::new(
+                ErrorCode::METHOD_NOT_FOUND,
+                format!("Tool 'gst_set_pipeline_state' is not available in the current mode"),
+                None::<serde_json::Value>,
+            ));
+        }
+        
         let state = match params.state.to_lowercase().as_str() {
             "null" => gst::State::Null,
             "ready" => gst::State::Ready,

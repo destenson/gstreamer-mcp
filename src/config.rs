@@ -1,3 +1,4 @@
+use crate::cli::{OperationalMode, ParsedConfig};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -11,6 +12,15 @@ pub struct Configuration {
     
     #[serde(default = "default_max_results")]
     pub max_search_results: usize,
+    
+    #[serde(default)]
+    pub operational_mode: OperationalMode,
+    
+    #[serde(default)]
+    pub included_tools: Option<Vec<String>>,
+    
+    #[serde(default)]
+    pub excluded_tools: Option<Vec<String>>,
 }
 
 impl Default for Configuration {
@@ -19,6 +29,9 @@ impl Default for Configuration {
             cache_enabled: default_cache_enabled(),
             cache_ttl_seconds: default_cache_ttl(),
             max_search_results: default_max_results(),
+            operational_mode: OperationalMode::default(),
+            included_tools: None,
+            excluded_tools: None,
         }
     }
 }
@@ -47,6 +60,22 @@ impl Configuration {
             if let Ok(max) = val.parse::<usize>() {
                 self.max_search_results = max;
             }
+        }
+    }
+    
+    /// Merge CLI arguments into configuration
+    /// Priority: CLI args > env vars > config file > defaults
+    pub fn merge_cli_args(&mut self, cli_config: &ParsedConfig) {
+        // Override operational mode
+        self.operational_mode = cli_config.mode.clone();
+        
+        // Override tool lists if provided
+        if cli_config.included_tools.is_some() {
+            self.included_tools = cli_config.included_tools.clone();
+        }
+        
+        if cli_config.excluded_tools.is_some() {
+            self.excluded_tools = cli_config.excluded_tools.clone();
         }
     }
 }

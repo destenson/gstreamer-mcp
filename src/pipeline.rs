@@ -127,6 +127,13 @@ impl PipelineManager {
             )))
         }
     }
+    
+    pub fn stop_pipeline(&self, id: &str) -> McpResult<()> {
+        // First set the pipeline to null state
+        self.set_pipeline_state(id, gst::State::Null)?;
+        // Then remove it
+        self.remove_pipeline(id)
+    }
 
     pub fn list_pipelines(&self) -> Vec<PipelineInfo> {
         let pipelines = self.pipelines.read();
@@ -294,4 +301,11 @@ pub fn validate_pipeline_description(description: &str) -> McpResult<Vec<String>
             e
         ))),
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ValidationResult {
+    pub is_valid: bool,
+    pub elements: Vec<String>,
+    pub error: Option<String>,
 }
